@@ -2,7 +2,9 @@ import { createServer } from "node:http";
 import { readFile, readdir } from "node:fs/promises";
 import sanitizeFilename from "sanitize-filename";
 import { Suspense } from "react";
-import { renderToPipeableStream } from "react-server-dom-webpack/server";
+import {
+  renderToPipeableStream as renderToFlightStream,
+} from "react-server-dom-webpack/server";
 
 createServer(async (req, res) => {
   try {
@@ -31,7 +33,7 @@ createServer(async (req, res) => {
 function sendRSC(res, jsx) {
   res.setHeader("Content-Type", "text/x-component");
 
-  const stream = renderToPipeableStream(jsx, {});
+  const stream = renderToFlightStream(jsx, {});
   stream.pipe(res);
 }
 
@@ -80,7 +82,7 @@ function BlogPostPage({ postSlug }) {
 async function Post({ slug }) {
   let content;
   try {
-    await new Promise((resolve) => setTimeout(resolve, 5000));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     content = await readFile("./posts/" + slug + ".txt", "utf8");
   } catch (err) {
     throwNotFound(err);

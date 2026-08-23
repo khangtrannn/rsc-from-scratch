@@ -3,6 +3,10 @@ import { readFile, readdir } from "fs/promises";
 import escapeHtml from "escape-html";
 import sanitizeFilename from "sanitize-filename";
 import { Readable } from "node:stream";
+import {
+  renderToPipeableStream as renderToHTMLStream,
+} from "react-dom/server";
+import { renderToPipeableStream } from "react-dom/server";
 import { Suspense } from "react";
 
 createServer(async (req, res) => {
@@ -16,9 +20,31 @@ createServer(async (req, res) => {
 
     if (url.pathname === "/client.js") {
       await sendScript(res, "./dist/client.js");
-    } else if (url.pathname === '/rsc') {
+    } else if (url.pathname === "/rsc") {
       const pathname = url.searchParams.get("url") ?? "/";
       await proxyRSC(res, pathname);
+    } else if (url.pathname === "/debug-rsc") {
+      const pathname = url.searchParams.get("url") ?? "/";
+      const model = await fetchRSCModel(pathname);
+
+      console.dir(model, { depth: 4 });
+
+      res.end("Decoded Flight. Check the 8080 terminal.");
+    } else if (url.pathname === "/debug-ssr") {
+      const pathname = url.searchParams.get("url") ?? "/";
+
+      const model = await fetchRSCModel(pathname);
+
+      res.setHeader("Content-Type", "text/html");
+
+      const { pipe } = renderToHTMLStream(model, {
+        onShellReady() {
+          pipe(res);
+        },
+        onError(error) {
+          console.error(error);
+        },
+      });
     } else if (url.searchParams.has("jsx")) {
       url.searchParams.delete("jsx"); // Keep the url passed to the <Router> clean
       await sendJSX(res, <Router url={url} />);
@@ -43,11 +69,7 @@ function Router({ url, useSuspense = false }) {
   }
 
   if (useSuspense) {
-    page = (
-      <Suspense fallback={<p>Loading post...</p>}>
-        {page}
-      </Suspense>
-    );
+    page = <Suspense fallback={<p>Loading post...</p>}>{page}</Suspense>;
   }
 
   return <BlogLayout>{page}</BlogLayout>;
@@ -56,7 +78,7 @@ function Router({ url, useSuspense = false }) {
 async function BlogIndexPage() {
   const postFiles = await readdir("./posts");
   const postSlugs = postFiles.map((file) =>
-    file.slice(0, file.lastIndexOf("."))
+    file.slice(0, file.lastIndexOf(".")),
   );
   return (
     <section>
@@ -126,17 +148,35 @@ function Footer({ author }) {
 
 async function proxyRSC(res, pathname) {
   const response = await fetch(
-    `http://localhost:8081/rsc?url=${encodeURIComponent(pathname)}`
+    `http://localhost:8081/rsc?url=${encodeURIComponent(pathname)}`,
   );
 
   res.statusCode = response.status;
 
   res.setHeader(
     "Content-Type",
-    response.headers.get("content-type") ?? "text/x-component"
+    response.headers.get("content-type") ?? "text/x-component",
   );
 
   Readable.fromWeb(response.body).pipe(res);
+}
+
+async function fetchRSCModel(pathname) {
+  const response = await fetch(
+    `http://localhost:8081/rsc?url=${encodeURIComponent(pathname)}`,
+  );
+
+  if (!response.ok) {
+    throw new Error(`RSC request failed: ${response.status}`);
+  }
+
+  const nodeStream = Readable.fromWeb(response.body);
+
+  return createFromNodeStream(nodeStream, {
+    moduleMap: {},
+    moduleLoading: null,
+    serverModuleMap: null,
+  });
 }
 
 async function sendHTML(res, jsx) {
@@ -242,8 +282,8 @@ async function renderJSXToClientJSX(jsx) {
           Object.entries(jsx).map(async ([propName, value]) => [
             propName,
             await renderJSXToClientJSX(value),
-          ])
-        )
+          ]),
+        ),
       );
     }
   } else throw new Error("Not implemented");
@@ -256,7 +296,7 @@ async function renderJSXToHTML(jsx) {
     return "";
   } else if (Array.isArray(jsx)) {
     const renderedChildren = await Promise.all(
-      jsx.map((child) => renderJSXToHTML(child))
+      jsx.map((child) => renderJSXToHTML(child)),
     );
     return renderedChildren.join("");
   } else if (jsx instanceof Promise) {
