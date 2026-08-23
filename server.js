@@ -2,7 +2,7 @@ import { createServer } from "http";
 import { readFile, readdir } from "fs/promises";
 import escapeHtml from "escape-html";
 import sanitizeFilename from "sanitize-filename";
-import { renderToPipeableStream } from "react-server-dom-webpack/server.node";
+import { Readable } from "node:stream";
 import { Suspense } from "react";
 
 createServer(async (req, res) => {
@@ -17,12 +17,8 @@ createServer(async (req, res) => {
     if (url.pathname === "/client.js") {
       await sendScript(res, "./dist/client.js");
     } else if (url.pathname === '/rsc') {
-      const targetUrl = new URL(
-        url.searchParams.get("url") || "/",
-        `http://${req.headers.host}`
-      );
-
-      sendRSC(res, <Router url={targetUrl} useSuspense />);
+      const pathname = url.searchParams.get("url") ?? "/";
+      await proxyRSC(res, pathname);
     } else if (url.searchParams.has("jsx")) {
       url.searchParams.delete("jsx"); // Keep the url passed to the <Router> clean
       await sendJSX(res, <Router url={url} />);
@@ -128,11 +124,19 @@ function Footer({ author }) {
   );
 }
 
-async function sendRSC(res, jsx) {
-  res.setHeader("Content-Type", "text/x-component");
+async function proxyRSC(res, pathname) {
+  const response = await fetch(
+    `http://localhost:8081/rsc?url=${encodeURIComponent(pathname)}`
+  );
 
-  const stream = renderToPipeableStream(jsx, {});
-  stream.pipe(res);
+  res.statusCode = response.status;
+
+  res.setHeader(
+    "Content-Type",
+    response.headers.get("content-type") ?? "text/x-component"
+  );
+
+  Readable.fromWeb(response.body).pipe(res);
 }
 
 async function sendHTML(res, jsx) {
