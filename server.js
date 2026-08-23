@@ -3,6 +3,7 @@ import { readFile, readdir } from "fs/promises";
 import escapeHtml from "escape-html";
 import sanitizeFilename from "sanitize-filename";
 import { renderToPipeableStream } from "react-server-dom-webpack/server.node";
+import { Suspense } from "react";
 
 createServer(async (req, res) => {
   try {
@@ -21,7 +22,7 @@ createServer(async (req, res) => {
         `http://${req.headers.host}`
       );
 
-      sendRSC(res, <Router url={targetUrl} />);
+      sendRSC(res, <Router url={targetUrl} useSuspense />);
     } else if (url.searchParams.has("jsx")) {
       url.searchParams.delete("jsx"); // Keep the url passed to the <Router> clean
       await sendJSX(res, <Router url={url} />);
@@ -35,14 +36,24 @@ createServer(async (req, res) => {
   }
 }).listen(8080);
 
-function Router({ url }) {
+function Router({ url, useSuspense = false }) {
   let page;
+
   if (url.pathname === "/") {
     page = <BlogIndexPage />;
   } else {
     const postSlug = sanitizeFilename(url.pathname.slice(1));
     page = <BlogPostPage postSlug={postSlug} />;
   }
+
+  if (useSuspense) {
+    page = (
+      <Suspense fallback={<p>Loading post...</p>}>
+        {page}
+      </Suspense>
+    );
+  }
+
   return <BlogLayout>{page}</BlogLayout>;
 }
 
@@ -70,6 +81,7 @@ function BlogPostPage({ postSlug }) {
 async function Post({ slug }) {
   let content;
   try {
+    await new Promise((resolve) => setTimeout(resolve, 5000));
     content = await readFile("./posts/" + slug + ".txt", "utf8");
   } catch (err) {
     throwNotFound(err);
