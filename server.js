@@ -3,10 +3,10 @@ import { readFile, readdir } from "fs/promises";
 import escapeHtml from "escape-html";
 import sanitizeFilename from "sanitize-filename";
 import { Readable } from "node:stream";
+import { createFromNodeStream } from "react-server-dom-webpack/client.node";
 import {
   renderToPipeableStream as renderToHTMLStream,
 } from "react-dom/server";
-import { renderToPipeableStream } from "react-dom/server";
 import { Suspense } from "react";
 
 createServer(async (req, res) => {
@@ -23,17 +23,10 @@ createServer(async (req, res) => {
     } else if (url.pathname === "/rsc") {
       const pathname = url.searchParams.get("url") ?? "/";
       await proxyRSC(res, pathname);
-    } else if (url.pathname === "/debug-rsc") {
-      const pathname = url.searchParams.get("url") ?? "/";
-      const model = await fetchRSCModel(pathname);
-
-      console.dir(model, { depth: 4 });
-
-      res.end("Decoded Flight. Check the 8080 terminal.");
-    } else if (url.pathname === "/debug-ssr") {
+    } else if (url.pathname === "/ssr") {
       const pathname = url.searchParams.get("url") ?? "/";
 
-      const model = await fetchRSCModel(pathname);
+      const { model, browserStream } = await fetchRSCForSSR(pathname);
 
       res.setHeader("Content-Type", "text/html");
 
@@ -161,22 +154,30 @@ async function proxyRSC(res, pathname) {
   Readable.fromWeb(response.body).pipe(res);
 }
 
-async function fetchRSCModel(pathname) {
+async function fetchRSCForSSR(pathname) {
   const response = await fetch(
-    `http://localhost:8081/rsc?url=${encodeURIComponent(pathname)}`,
+    `http://localhost:8081/rsc?url=${encodeURIComponent(pathname)}`
   );
 
   if (!response.ok) {
     throw new Error(`RSC request failed: ${response.status}`);
   }
 
-  const nodeStream = Readable.fromWeb(response.body);
+  const [ssrStream, browserStream] = response.body.tee();
 
-  return createFromNodeStream(nodeStream, {
-    moduleMap: {},
-    moduleLoading: null,
-    serverModuleMap: null,
-  });
+  const model = createFromNodeStream(
+    Readable.fromWeb(ssrStream),
+    {
+      moduleMap: {},
+      moduleLoading: null,
+      serverModuleMap: null,
+    }
+  );
+
+  return {
+    model,
+    browserStream,
+  };
 }
 
 async function sendHTML(res, jsx) {
