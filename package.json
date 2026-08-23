@@ -1,0 +1,27 @@
+{
+  "name": "rsc-from-scratch",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon -- --import ./register-jsx-loader.js ./server.js",
+    "demo": "node --import ./register-jsx-loader.js demo.jsx"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@babel/core": "^8.0.1",
+    "@babel/plugin-transform-react-jsx": "^8.0.1",
+    "escape-html": "^1.0.3",
+    "nodemon": "^3.1.14",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "sanitize-filename": "^1.6.4"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0"
+  }
+}

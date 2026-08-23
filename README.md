@@ -1,0 +1,2 @@
+We're going to add a new mode to our server. When the request ends with ?jsx, we'll send a tree like this instead of HTML. This will make it easy for the client to determine what parts have changed, and only update the DOM where necessary. This will solve our immediate problem of the <input> state getting lost on every navigation, but that's not the only reason we are doing this. In the next part (not now!) you will see how this also lets us pass new information (not just HTML) from the server to the client.
+
