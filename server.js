@@ -2,6 +2,7 @@ import { createServer } from "http";
 import { readFile, readdir } from "fs/promises";
 import escapeHtml from "escape-html";
 import sanitizeFilename from "sanitize-filename";
+import { renderToPipeableStream } from "react-server-dom-webpack/server.node";
 
 createServer(async (req, res) => {
   try {
@@ -14,6 +15,13 @@ createServer(async (req, res) => {
 
     if (url.pathname === "/client.js") {
       await sendScript(res, "./client.js");
+    } else if (url.pathname === '/rsc') {
+      const targetUrl = new URL(
+        url.searchParams.get("url") || "/",
+        `http://${req.headers.host}`
+      );
+
+      sendRSC(res, <Router url={targetUrl} />);
     } else if (url.searchParams.has("jsx")) {
       url.searchParams.delete("jsx"); // Keep the url passed to the <Router> clean
       await sendJSX(res, <Router url={url} />);
@@ -62,6 +70,7 @@ function BlogPostPage({ postSlug }) {
 async function Post({ slug }) {
   let content;
   try {
+    await new Promise((resolve) => setTimeout(resolve, 5000));
     content = await readFile("./posts/" + slug + ".txt", "utf8");
   } catch (err) {
     throwNotFound(err);
@@ -108,6 +117,13 @@ function Footer({ author }) {
       </p>
     </footer>
   );
+}
+
+async function sendRSC(res, jsx) {
+  res.setHeader("Content-Type", "text/x-component");
+
+  const stream = renderToPipeableStream(jsx, {});
+  stream.pipe(res);
 }
 
 async function sendHTML(res, jsx) {

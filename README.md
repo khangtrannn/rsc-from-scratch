@@ -1,2 +1,17 @@
-We're going to add a new mode to our server. When the request ends with ?jsx, we'll send a tree like this instead of HTML. This will make it easy for the client to determine what parts have changed, and only update the DOM where necessary. This will solve our immediate problem of the <input> state getting lost on every navigation, but that's not the only reason we are doing this. In the next part (not now!) you will see how this also lets us pass new information (not just HTML) from the server to the client.
+Flight is not a serialized snapshot of a fully completed React tree. It is a streamed graph of React model chunks. Ready parts can be sent immediately, while unresolved async parts are represented by references such as $L10 and fulfilled by later chunks. Suspense does not create the Flight stream; it defines UI boundaries for how pending streamed data should be revealed.
 
+```
+Flight =
+streamed React model graph
+
+Ready subtree
+→ send now
+
+Async subtree
+→ send reference now
+→ send its chunk later
+
+Suspense
+→ controls UI reveal/fallback,
+not the existence of streaming
+```
