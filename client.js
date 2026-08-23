@@ -1,4 +1,5 @@
 import { hydrateRoot } from "react-dom/client";
+import { createFromFetch } from "react-server-dom-webpack/client";
 
 let currentPathname = window.location.pathname;
 
@@ -17,11 +18,10 @@ async function navigate(pathname) {
   }
 }
 
-async function fetchClientJSX(pathname) {
-  const response = await fetch(pathname + "?jsx");
-  const clientJSXString = await response.text();
-  const clientJSX = JSON.parse(clientJSXString, parseJSX);
-  return clientJSX;
+function fetchClientJSX(pathname) {
+  return createFromFetch(
+    fetch(`/rsc?url=${encodeURIComponent(pathname)}`)
+  );
 }
 
 function parseJSX(key, value) {

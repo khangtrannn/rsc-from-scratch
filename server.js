@@ -14,7 +14,7 @@ createServer(async (req, res) => {
     }
 
     if (url.pathname === "/client.js") {
-      await sendScript(res, "./client.js");
+      await sendScript(res, "./dist/client.js");
     } else if (url.pathname === '/rsc') {
       const targetUrl = new URL(
         url.searchParams.get("url") || "/",
@@ -70,7 +70,6 @@ function BlogPostPage({ postSlug }) {
 async function Post({ slug }) {
   let content;
   try {
-    await new Promise((resolve) => setTimeout(resolve, 5000));
     content = await readFile("./posts/" + slug + ".txt", "utf8");
   } catch (err) {
     throwNotFound(err);
@@ -111,9 +110,7 @@ function Footer({ author }) {
     <footer>
       <hr />
       <p>
-        <i>
-          (c) {author} {new Date().getFullYear()}
-        </i>
+        <i>{`(c) ${author} ${new Date().getFullYear()}`}</i>
       </p>
     </footer>
   );
@@ -142,6 +139,7 @@ async function sendHTML(res, jsx) {
       {
         "imports": {
           "react": "https://esm.sh/react@19.2.8",
+          "react-dom": "https://esm.sh/react-dom@19.2.8",
           "react-dom/client": "https://esm.sh/react-dom@19.2.8/client"
         }
       }

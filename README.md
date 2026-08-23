@@ -15,3 +15,48 @@ Suspense
 → controls UI reveal/fallback,
 not the existence of streaming
 ```
+
+---
+
+```
+click /hello-world
+      ↓
+navigate("/hello-world")
+      ↓
+fetchClientJSX()
+      ↓
+fetch("/rsc?url=/hello-world")
+      ↓
+Flight bytes
+      ↓
+createFromFetch()
+      ↓
+React model
+      ↓
+await
+      ↓
+root.render(...)
+```
+
+# Webpack
+
+```
+client.js
+   │
+   │ Webpack starts here
+   ▼
+dependency graph
+   │
+   ├── react
+   ├── react-dom/client
+   └── react-server-dom-webpack/client
+              │
+              ▼
+        browser binding
+              │
+              ▼
+         Webpack runtime
+              │
+              ▼
+dist/client.js
+```
