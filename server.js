@@ -87,6 +87,8 @@ function BlogLayout({ children }) {
         <nav>
           <a href="/">Home</a>
           <hr />
+          <input />
+          <hr />
         </nav>
         <main>{children}</main>
         <Footer author={author} />
@@ -110,6 +112,15 @@ function Footer({ author }) {
 
 async function sendHTML(res, jsx) {
   let html = await renderJSXToHTML(jsx);
+
+  // Serialize the JSX payload after the HTML to avoid blocking paint
+  const clientJSX = await renderJSXToClientJSX(jsx);
+  const clientJSXString = JSON.stringify(clientJSX, stringifyJSX, 2);
+
+  html += `<script>window.__INITIAL_CLIENT_JSX_STRING__ = `;
+  html += JSON.stringify(clientJSXString).replace(/</g, "\\u003c");
+  html += `</script>`;
+
   html += `
     <script type="importmap">
       {

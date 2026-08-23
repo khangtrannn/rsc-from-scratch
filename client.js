@@ -5,8 +5,8 @@ let currentPathname = window.location.pathname;
 const root = hydrateRoot(document, getInitialClientJSX());
 
 function getInitialClientJSX() {
-  // TODO: return the <html>...</html> client JSX tree mathching the initial HTML
-  return null;
+  const clientJSX = JSON.parse(window.__INITIAL_CLIENT_JSX_STRING__, parseJSX);
+  return clientJSX;
 }
 
 async function navigate(pathname) {
