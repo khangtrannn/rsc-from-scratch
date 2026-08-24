@@ -10,6 +10,10 @@ const rootPromise = bootstrap();
 async function bootstrap() {
   const stream = createInitialFlightStream();
 
+  pumpInitialFlight().catch((error) => {
+    window.__FLIGHT_QUEUE__.push({ type: 'error', value: error });
+  });
+
   const model = await createFromReadableStream(stream);
 
   return hydrateRoot(document, model);
@@ -37,6 +41,11 @@ function createInitialFlightStream() {
           closed = true;
           controller.close();
         }
+
+        if (entry.type === 'error') {
+          closed = true;
+          controller.error(entry.value);
+        }
       }
 
       // Consume everything that arrived before the client.js started.
@@ -50,6 +59,41 @@ function createInitialFlightStream() {
       }
     }
   });
+}
+
+async function pumpInitialFlight() {
+  const response = await fetch(
+    window.__INITIAL_FLIGHT_URL__,
+  );
+
+  if (!response.ok) {
+    throw new Error(`Intial Flight request failed: ${response.status}`);
+  };
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+
+  while (true) {
+    const { value, done } = await reader.read();
+
+    if (done) {
+      break;
+    }
+
+    const chunk = decoder.decode(value, { stream: true });
+
+    if (chunk) {
+      window.__FLIGHT_QUEUE__.push({ type: 'chunk', value: chunk });
+    }
+  }
+
+  const remaining = decoder.decode();
+
+  if (remaining) {
+    window.__FLIGHT_QUEUE__.push({ type: 'chunk', value: remaining });
+  }
+
+  window.__FLIGHT_QUEUE__.push({ type: 'done' });
 }
 
 function fetchClientJSX(pathname) {

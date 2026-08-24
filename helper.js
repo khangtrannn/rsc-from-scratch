@@ -3,11 +3,17 @@ import { createFromNodeStream } from "react-server-dom-webpack/client.node";
 import {
   renderToPipeableStream as renderToHTMLStream,
 } from "react-dom/server";
+import { randomUUID } from "node:crypto";
+
+const initialFlightStreams = new Map();
 
 export async function sendSSRDocument(res, pathname) {
   const { model, browserStream } = await fetchRSCForSSR(pathname);
 
-  const browserFlightPromise = readFlightChunks(browserStream);
+  const flightId = randomUUID();
+  const initialFlightUrl = `/initial-flight?id=${encodeURIComponent(flightId)}`;
+
+  initialFlightStreams.set(flightId, browserStream);
 
   res.setHeader("Content-Type", "text/html");
 
@@ -15,42 +21,47 @@ export async function sendSSRDocument(res, pathname) {
 
   htmlStream.pipe(res, { end: false });
 
-  htmlStream.on("end", async () => {
-    const flightChunks = await browserFlightPromise;
-
-    const flightPushScripts = flightChunks
-      .map((chunk) => {
-        const serializedChunk = JSON.stringify(chunk).replace(/</g, "\\u003c");
-
-        return `
-          window.__FLIGHT_QUEUE__.push({
-            type: "chunk",
-            value: ${serializedChunk}
-          });
-        `;
-      })
-      .join("\n");
-
-    res.end(`
-      <script>
-        ${flightPushScripts}
-        window.__FLIGHT_QUEUE__.push({ type: "done" });
-      </script>
-    `);
+  htmlStream.on('end', () => {
+    res.end();
   });
 
   const { pipe } = renderToHTMLStream(model, {
     bootstrapScriptContent: `
       window.__FLIGHT_QUEUE__ = [];
+      window.__INITIAL_FLIGHT_URL__ = ${JSON.stringify(initialFlightUrl)};
     `,
+
     bootstrapScripts: ["/client.js"],
+
     onShellReady() {
       pipe(htmlStream);
     },
-    onError(error) {
-      console.error(error);
-    },
+
+    onError(err) {
+      console.error(err);
+    }
   });
+}
+
+export function sendInitialFlight(res, flightId) {
+  if (!flightId) {
+    res.statusCode = 400;
+    return res.end('Missing Flight ID');
+  }
+
+  const stream = initialFlightStreams.get(flightId);
+
+  if (!stream) {
+    res.statusCode = 404;
+    return res.end('Flight stream not found');
+  }
+
+  // Stream can only be consumed once.
+  initialFlightStreams.delete(flightId);
+
+  res.setHeader("Content-Type", "text/x-component");
+
+  Readable.fromWeb(stream).pipe(res);
 }
 
 export async function proxyRSC(res, pathname) {
