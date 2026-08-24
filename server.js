@@ -2,7 +2,7 @@ import { createServer } from "http";
 import { readFile, readdir } from "fs/promises";
 import escapeHtml from "escape-html";
 import sanitizeFilename from "sanitize-filename";
-import { Readable } from "node:stream";
+import { Readable, PassThrough } from "node:stream";
 import { createFromNodeStream } from "react-server-dom-webpack/client.node";
 import {
   renderToPipeableStream as renderToHTMLStream,
@@ -25,14 +25,35 @@ createServer(async (req, res) => {
       await proxyRSC(res, pathname);
     } else if (url.pathname === "/ssr") {
       const pathname = url.searchParams.get("url") ?? "/";
-
       const { model, browserStream } = await fetchRSCForSSR(pathname);
+
+      // Start consuming the second Flight branch immediately
+      const browserFlightPromise = new Response(browserStream).text();
 
       res.setHeader("Content-Type", "text/html");
 
+      const htmlStream = new PassThrough();
+
+      // Let HTML reach the browser progressively,
+      // but don't close the HTTP response when HTML finishes
+      htmlStream.pipe(res, { end: false });
+
+      htmlStream.on("end", async () => {
+        const flight = await browserFlightPromise;
+
+        const serializedFlight = JSON.stringify(flight).replace(/</g, "\\u003c");
+
+        res.end(`
+          <script>
+            window.__INITIAL_FLIGHT__ = ${serializedFlight}
+          </script>
+          <script src="/client.js"></script>
+        `);
+      });
+
       const { pipe } = renderToHTMLStream(model, {
         onShellReady() {
-          pipe(res);
+          pipe(htmlStream);
         },
         onError(error) {
           console.error(error);

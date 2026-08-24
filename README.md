@@ -94,13 +94,4 @@ Our current implementation preserves the layout because React reconciles the new
 
 ---
 
-8081 — React Server
---conditions react-server
-
-<Router />
-   ↓
-Server Components execute
-   ↓
-renderToPipeableStream()
-   ↓
-Flight ✅
+SSR HTML and hydration React model should come from the same RSC render. The SSR server decodes one Flight branch to produce HTML, while the browser decodes the other Flight branch to reconstruct the same React model for hydration.

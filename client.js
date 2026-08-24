@@ -2,8 +2,28 @@ import { hydrateRoot } from "react-dom/client";
 import { createFromFetch } from "react-server-dom-webpack/client";
 
 let currentPathname = window.location.pathname;
+let root;
 
-const root = hydrateRoot(document, getInitialClientJSX());
+bootstrap();
+
+async function bootstrap() {
+  if (window.__INITIAL_FLIGHT__) {
+    const model = await createFromFetch(
+      Promise.resolve(
+        new Response(window.__INITIAL_FLIGHT__, {
+          headers: {
+            'Content-Type': 'text/x-component'
+          }
+        }),
+      ),
+    );
+
+    root = hydrateRoot(document, model);
+    return;
+  }
+
+  root = hydrateRoot(document, getInitialClientJSX());
+}
 
 function getInitialClientJSX() {
   const clientJSX = JSON.parse(window.__INITIAL_CLIENT_JSX_STRING__, parseJSX);
