@@ -1,30 +1,35 @@
 import { hydrateRoot } from "react-dom/client";
-import { createFromFetch } from "react-server-dom-webpack/client";
+import {
+  createFromFetch,
+  createFromReadableStream,
+} from "react-server-dom-webpack/client";
 
 let currentPathname = window.location.pathname;
-let root;
-
-bootstrap();
+const rootPromise = bootstrap();
 
 async function bootstrap() {
-  if (window.__INITIAL_FLIGHT__) {
-    const model = await createFromFetch(
-      Promise.resolve(
-        new Response(window.__INITIAL_FLIGHT__, {
-          headers: {
-            'Content-Type': 'text/x-component'
-          }
-        }),
-      ),
-    );
+  const stream = new ReadableStream({
+    start(controller) {
+      const encoder = new TextEncoder();
 
-    root = hydrateRoot(document, model);
-  }
+      for (const chunk of window.__FLIGHT_CHUNKS__) {
+        controller.enqueue(encoder.encode(chunk));
+      }
+
+      controller.close();
+    }
+  });
+
+  const model = await createFromReadableStream(stream);
+
+  return hydrateRoot(document, model);
 }
 
 async function navigate(pathname) {
   currentPathname = pathname;
   const clientJSX = await fetchClientJSX(pathname);
+  const root = await rootPromise;
+
   if (pathname === currentPathname) {
     root.render(clientJSX);
   }

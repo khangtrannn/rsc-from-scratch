@@ -22,7 +22,8 @@ export async function sendSSRDocument(res, pathname) {
 
     res.end(`
       <script>
-        window.__INITIAL_FLIGHT__ = ${serializedFlight}
+        window.__FLIGHT_CHUNKS__ = [];
+        window.__FLIGHT_CHUNKS__.push(${serializedFlight});
       </script>
       <script src="/client.js"></script>
     `);
