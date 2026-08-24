@@ -1,6 +1,6 @@
 import { createServer } from "http";
 import { readFile } from "node:fs/promises";
-import { proxyRSC, sendInitialFlight, sendSSRDocument } from "./helper.js";
+import { proxyRSC, sendSSRDocument } from "./helper.js";
 
 createServer(async (req, res) => {
   try {
@@ -13,9 +13,6 @@ createServer(async (req, res) => {
 
     if (url.pathname === "/client.js") {
       await sendScript(res, "./dist/client.js");
-    } else if (url.pathname === '/initial-flight') {
-      const flightId = url.searchParams.get('id');
-      sendInitialFlight(res, flightId);
     } else if (url.pathname === "/rsc") {
       const pathname = url.searchParams.get("url") ?? "/";
       await proxyRSC(res, pathname);
