@@ -79,33 +79,6 @@ export async function proxyRSC(res, pathname) {
   Readable.fromWeb(response.body).pipe(res);
 }
 
-async function readFlightChunks(stream) {
-  const reader = stream.getReader();
-  const decoder = new TextDecoder();
-
-  const chunks = [];
-
-  while (true) {
-    const { value, done } = await reader.read();
-
-    if (done) {
-      break;
-    }
-
-    chunks.push(
-      decoder.decode(value, { stream: true }),
-    );
-  }
-
-  const remaining = decoder.decode();
-
-  if (remaining) {
-    chunks.push(remaining);
-  }
-
-  return chunks;
-}
-
 async function fetchRSCForSSR(pathname) {
   const response = await fetch(
     `http://localhost:8081/rsc?url=${encodeURIComponent(pathname)}`
