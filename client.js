@@ -8,21 +8,54 @@ let currentPathname = window.location.pathname;
 const rootPromise = bootstrap();
 
 async function bootstrap() {
-  const stream = new ReadableStream({
-    start(controller) {
-      const encoder = new TextEncoder();
-
-      for (const chunk of window.__FLIGHT_CHUNKS__) {
-        controller.enqueue(encoder.encode(chunk));
-      }
-
-      controller.close();
-    }
-  });
+  const stream = createInitialFlightStream();
 
   const model = await createFromReadableStream(stream);
 
   return hydrateRoot(document, model);
+}
+
+function createInitialFlightStream() {
+  const encoder = new TextEncoder();
+
+  return new ReadableStream({
+    start(controller) {
+      const queue = window.__FLIGHT_QUEUE__;
+
+      let closed = false;
+
+      function handleEntry(entry) {
+        if (closed) {
+          return;
+        }
+
+        if (entry.type === 'chunk') {
+          controller.enqueue(encoder.encode(entry.value));
+        }
+
+        if (entry.type === 'done') {
+          closed = true;
+          controller.close();
+        }
+      }
+
+      // Consume everything that arrived before the client.js started.
+      const existingEntries = [...queue];
+
+      // Future pushes go directly into the ReadableStream.
+      queue.push = handleEntry;
+
+      for (const entry of existingEntries) {
+        handleEntry(entry);
+      }
+    }
+  });
+}
+
+function fetchClientJSX(pathname) {
+  return createFromFetch(
+    fetch(`/rsc?url=${encodeURIComponent(pathname)}`)
+  );
 }
 
 async function navigate(pathname) {
@@ -33,12 +66,6 @@ async function navigate(pathname) {
   if (pathname === currentPathname) {
     root.render(clientJSX);
   }
-}
-
-function fetchClientJSX(pathname) {
-  return createFromFetch(
-    fetch(`/rsc?url=${encodeURIComponent(pathname)}`)
-  );
 }
 
 window.addEventListener(

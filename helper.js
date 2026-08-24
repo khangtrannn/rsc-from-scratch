@@ -7,7 +7,7 @@ import {
 export async function sendSSRDocument(res, pathname) {
   const { model, browserStream } = await fetchRSCForSSR(pathname);
 
-  const browserFlightPromise = new Response(browserStream).text();
+  const browserFlightPromise = readFlightChunks(browserStream);
 
   res.setHeader("Content-Type", "text/html");
 
@@ -16,20 +16,34 @@ export async function sendSSRDocument(res, pathname) {
   htmlStream.pipe(res, { end: false });
 
   htmlStream.on("end", async () => {
-    const flight = await browserFlightPromise;
+    const flightChunks = await browserFlightPromise;
 
-    const serializedFlight = JSON.stringify(flight).replace(/</g, "\\u003c");
+    const flightPushScripts = flightChunks
+      .map((chunk) => {
+        const serializedChunk = JSON.stringify(chunk).replace(/</g, "\\u003c");
+
+        return `
+          window.__FLIGHT_QUEUE__.push({
+            type: "chunk",
+            value: ${serializedChunk}
+          });
+        `;
+      })
+      .join("\n");
 
     res.end(`
       <script>
-        window.__FLIGHT_CHUNKS__ = [];
-        window.__FLIGHT_CHUNKS__.push(${serializedFlight});
+        ${flightPushScripts}
+        window.__FLIGHT_QUEUE__.push({ type: "done" });
       </script>
-      <script src="/client.js"></script>
     `);
   });
 
   const { pipe } = renderToHTMLStream(model, {
+    bootstrapScriptContent: `
+      window.__FLIGHT_QUEUE__ = [];
+    `,
+    bootstrapScripts: ["/client.js"],
     onShellReady() {
       pipe(htmlStream);
     },
@@ -52,6 +66,33 @@ export async function proxyRSC(res, pathname) {
   );
 
   Readable.fromWeb(response.body).pipe(res);
+}
+
+async function readFlightChunks(stream) {
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+
+  const chunks = [];
+
+  while (true) {
+    const { value, done } = await reader.read();
+
+    if (done) {
+      break;
+    }
+
+    chunks.push(
+      decoder.decode(value, { stream: true }),
+    );
+  }
+
+  const remaining = decoder.decode();
+
+  if (remaining) {
+    chunks.push(remaining);
+  }
+
+  return chunks;
 }
 
 async function fetchRSCForSSR(pathname) {

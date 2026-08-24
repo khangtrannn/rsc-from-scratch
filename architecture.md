@@ -1,3 +1,15 @@
+A global Flight queue bridges server-generated inline scripts and the client Flight ReadableStream. Before the client runtime loads, it buffers chunks. After bootstrap, its push() method becomes a live sink that feeds new chunks directly into the Flight decoder.
+
+```
+before client:
+push → buffer
+
+after client:
+push → ReadableStream → Flight decoder
+```
+
+---
+
 Initial navigation and client navigation originate from the same RSC server. The difference is who consumes the Flight output: initial navigation sends it through an SSR renderer and also gives it to the browser for hydration, while client navigation sends Flight directly to the existing browser React runtime.
 
 Same RSC producers.

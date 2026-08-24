@@ -6,7 +6,7 @@ createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
 
-    if (url.pathname.startsWith("/.well-known/")) {
+    if (url.pathname.startsWith("/.well-known/") || url.pathname.startsWith("/favicon.ico")) {
       res.statusCode = 404;
       return res.end();
     }
