@@ -19,15 +19,7 @@ async function bootstrap() {
     );
 
     root = hydrateRoot(document, model);
-    return;
   }
-
-  root = hydrateRoot(document, getInitialClientJSX());
-}
-
-function getInitialClientJSX() {
-  const clientJSX = JSON.parse(window.__INITIAL_CLIENT_JSX_STRING__, parseJSX);
-  return clientJSX;
 }
 
 async function navigate(pathname) {
@@ -42,20 +34,6 @@ function fetchClientJSX(pathname) {
   return createFromFetch(
     fetch(`/rsc?url=${encodeURIComponent(pathname)}`)
   );
-}
-
-function parseJSX(key, value) {
-  if (value === "$RE") {
-    // Restore the same element symbol that was serialized by the server.
-    return Symbol.for("react.element");
-  } else if (value === "$RTE") {
-    return Symbol.for("react.transitional.element");
-  } else if (typeof value === "string" && value.startsWith("$$")) {
-    // This is a string starting with $. Remove the extra $ added by the server.
-    return value.slice(1);
-  } else {
-    return value;
-  }
 }
 
 window.addEventListener(

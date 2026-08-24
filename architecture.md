@@ -1,3 +1,60 @@
+Initial navigation and client navigation originate from the same RSC server. The difference is who consumes the Flight output: initial navigation sends it through an SSR renderer and also gives it to the browser for hydration, while client navigation sends Flight directly to the existing browser React runtime.
+
+Same RSC producers.
+
+Initial:
+Flight -> SSR + hydration
+
+Navigation:
+Flight -> client reconciliation
+
+## Initial load
+
+```
+GET /hello-world
+        ↓
+8080 Public/SSR server
+        ↓
+GET 8081/rsc?url=/hello-world
+        ↓
+Server Components execute
+        ↓
+Flight
+      /      \
+     /        \
+SSR branch   browser branch
+    ↓             ↓
+React model      Flight
+    ↓             ↓
+HTML             embedded
+     \            /
+      \          /
+       document
+          ↓
+       Browser
+          ↓
+      hydrateRoot
+```
+
+## Client navigation
+
+```
+/
+↓ click
+
+/hello-world
+      ↓
+GET /rsc?url=/hello-world
+      ↓
+Flight only
+      ↓
+createFromFetch()
+      ↓
+root.render()
+```
+
+---
+
 The RSC server executes Server Components and serializes their rendered result into Flight. A consumer uses an RSC client decoder such as createFromNodeStream() to turn Flight back into a React model. SSR is one such consumer: after decoding Flight, it passes that React model to react-dom/server to produce HTML.
 
 ```
