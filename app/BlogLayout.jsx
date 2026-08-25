@@ -1,3 +1,4 @@
+import Counter from "./components/Counter.jsx";
 import { Footer } from "./components/Footer.jsx";
 
 export function BlogLayout({ children }) {
@@ -19,6 +20,8 @@ export function BlogLayout({ children }) {
 
           <hr />
         </nav>
+
+        <Counter />
 
         <main>{children}</main>
 

@@ -4,27 +4,28 @@ import { fileURLToPath } from "node:url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export default {
+const common = {
   mode: "development",
 
-  entry: "./client.js",
+  context: __dirname,
 
-  target: "web",
+  devtool: false,
 
   module: {
     rules: [
       {
         test: /\.jsx?$/,
         exclude: /node_modules/,
+
         use: {
           loader: "babel-loader",
+
           options: {
             babelrc: false,
+            configFile: false,
+
             plugins: [
-              [
-                "@babel/plugin-transform-react-jsx",
-                { runtime: "automatic" },
-              ],
+              ["@babel/plugin-transform-react-jsx", { runtime: "automatic" }],
             ],
           },
         },
@@ -32,9 +33,32 @@ export default {
     ],
   },
 
-  output: {
-    path: path.resolve(__dirname, "dist"),
-    filename: "client.js",
-    clean: true,
+  optimization: {
+    moduleIds: "named",
+    concatenateModules: false,
+    minimize: false,
   },
 };
+
+export default [
+  {
+    ...common,
+    name: "browser",
+    target: "web",
+    entry: "./client.js",
+    output: {
+      path: path.resolve(__dirname, "dist"),
+      filename: "client.js",
+    },
+  },
+  {
+    ...common,
+    name: "ssr",
+    target: "node",
+    entry: "./server.js",
+    output: {
+      path: path.resolve(__dirname, "dist"),
+      filename: "server.cjs",
+    },
+  },
+];

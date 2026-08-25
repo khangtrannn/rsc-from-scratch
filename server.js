@@ -4,6 +4,8 @@ import { Readable, PassThrough, Transform } from "node:stream";
 import { createFromNodeStream } from "react-server-dom-webpack/client.node";
 import { renderToPipeableStream as renderToHTMLStream } from "react-dom/server";
 
+import "./app/components/Counter.jsx";
+
 createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
@@ -226,7 +228,7 @@ async function fetchRSCForSSR(pathname) {
   const [ssrStream, browserStream] = response.body.tee();
 
   const model = createFromNodeStream(Readable.fromWeb(ssrStream), {
-    moduleMap: {},
+    moduleMap: null,
     moduleLoading: null,
     serverModuleMap: null,
   });

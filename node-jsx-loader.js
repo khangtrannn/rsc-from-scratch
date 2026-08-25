@@ -1,6 +1,8 @@
 import { readFile } from "node:fs/promises";
 import * as babel from "@babel/core";
 import transformReactJsx from "@babel/plugin-transform-react-jsx";
+import { fileURLToPath } from "node:url";
+import { relative } from "node:path";
 
 const babelOptions = {
   babelrc: false,
@@ -18,6 +20,28 @@ export async function load(url, context, defaultLoad) {
     return result;
   }
 
+  if (isJsx && hasUseClientDirective(result.source)) {
+    const moduleId = getClientModuleId(url);
+
+    console.log(`[use client] ${moduleId}`);
+
+    return {
+      format: 'module',
+      shortCircuit: true,
+      source: `
+        import { registerClientReference } from 'react-server-dom-webpack/server';
+
+        export default registerClientReference(
+          function () {
+            throw new Error('Cannot call a Client Component from the RSC server.');
+          },
+          ${JSON.stringify(moduleId)},
+          'default',
+        );
+      `,
+    }
+  }
+
   const transformed = await babel.transformAsync(result.source, {
     ...babelOptions,
     filename: url,
@@ -28,4 +52,19 @@ export async function load(url, context, defaultLoad) {
     format: "module",
     shortCircuit: isJsx,
   };
+}
+
+function hasUseClientDirective(source) {
+  return /^\s*["']use client["']\s*;?/.test(source);
+}
+
+function getClientModuleId(url) {
+  const filename = fileURLToPath(url);
+
+  const relativePath = relative(
+    process.cwd(),
+    filename
+  ).replaceAll("\\", "/");
+
+  return `./${relativePath}`;
 }
