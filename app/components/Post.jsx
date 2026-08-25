@@ -4,7 +4,7 @@ export async function Post({ slug }) {
   let content;
 
   try {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(() => resolve(), 2000));
 
     content = await readFile(
       `./posts/${slug}.txt`,

@@ -7,7 +7,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "nodemon -- --import ./register-jsx-loader.js ./server.js",
-    "start:rsc": "nodemon -- --import ./register-jsx-loader.js --conditions react-server ./rsc-server.js",
+    "start:rsc": "nodemon --ext js,jsx -- --import ./register-jsx-loader.js --conditions react-server ./rsc-server.js",
     "demo": "node --import ./register-jsx-loader.js demo.jsx"
   },
   "keywords": [],
@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
+    "babel-loader": "^10.1.1",
     "webpack": "^5.109.2",
     "webpack-cli": "^7.2.2"
   }

@@ -11,6 +11,27 @@ export default {
 
   target: "web",
 
+  module: {
+    rules: [
+      {
+        test: /\.jsx?$/,
+        exclude: /node_modules/,
+        use: {
+          loader: "babel-loader",
+          options: {
+            babelrc: false,
+            plugins: [
+              [
+                "@babel/plugin-transform-react-jsx",
+                { runtime: "automatic" },
+              ],
+            ],
+          },
+        },
+      },
+    ],
+  },
+
   output: {
     path: path.resolve(__dirname, "dist"),
     filename: "client.js",
