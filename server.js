@@ -4,7 +4,7 @@ import { Readable, PassThrough, Transform } from "node:stream";
 import { createFromNodeStream } from "react-server-dom-webpack/client.node";
 import { renderToPipeableStream as renderToHTMLStream } from "react-dom/server";
 
-import "./app/components/Counter.jsx";
+const ssrManifest = await loadSsrManifest();
 
 createServer(async (req, res) => {
   try {
@@ -32,6 +32,14 @@ createServer(async (req, res) => {
     res.end();
   }
 }).listen(8080);
+
+async function loadSsrManifest() {
+  const manifestPath = path.resolve(process.cwd(), "dist/ssr-manifest.json");
+
+  const source = await readFile(manifestPath, "utf8");
+
+  return JSON.parse(source);
+}
 
 async function sendScript(res, filename) {
   const content = await readFile(filename, "utf8");
@@ -228,7 +236,7 @@ async function fetchRSCForSSR(pathname) {
   const [ssrStream, browserStream] = response.body.tee();
 
   const model = createFromNodeStream(Readable.fromWeb(ssrStream), {
-    moduleMap: null,
+    moduleMap: ssrManifest,
     moduleLoading: null,
     serverModuleMap: null,
   });

@@ -1,7 +1,6 @@
 import React, { startTransition, use } from "react";
 
 import { hydrateRoot } from "react-dom/client";
-import "./app/components/Counter.jsx";
 
 import {
   createFromFetch,

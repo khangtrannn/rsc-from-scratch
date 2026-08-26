@@ -32,3 +32,5 @@ pnpm-debug.log*
 *.swp
 .DS_Store
 Thumbs.db
+
+.rsc

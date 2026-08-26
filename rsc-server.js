@@ -1,14 +1,9 @@
 import { createServer } from "node:http";
 import { renderToPipeableStream as renderToFlightStream } from "react-server-dom-webpack/server";
 import { Router } from "./app/Router.jsx";
+import { readFile } from "node:fs/promises";
 
-const clientManifest = {
-  "./app/components/Counter.jsx#default": {
-    id: "./app/components/Counter.jsx",
-    chunks: [],
-    name: "default",
-  },
-};
+const clientManifest = await loadClientManifest();
 
 createServer(async (req, res) => {
   try {
@@ -35,8 +30,16 @@ createServer(async (req, res) => {
   console.log("RSC server listening on http://localhost:8081");
 });
 
-function sendRSC(res, jsx) {
+async function sendRSC(res, jsx) {
   res.setHeader("Content-Type", "text/x-component");
   const stream = renderToFlightStream(jsx, clientManifest);
   stream.pipe(res);
+}
+
+async function loadClientManifest() {
+  const manifestUrl = new URL("./dist/client-manifest.json", import.meta.url);
+
+  const source = await readFile(manifestUrl, "utf-8");
+
+  return JSON.parse(source);
 }
