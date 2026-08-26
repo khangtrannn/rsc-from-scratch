@@ -1,9 +1,11 @@
 import { createServer } from "http";
 import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { Readable, PassThrough, Transform } from "node:stream";
 import { createFromNodeStream } from "react-server-dom-webpack/client.node";
 import { renderToPipeableStream as renderToHTMLStream } from "react-dom/server";
 
+const distDir = path.resolve(process.cwd(), "dist");
 const ssrManifest = await loadSsrManifest();
 
 createServer(async (req, res) => {
@@ -19,7 +21,9 @@ createServer(async (req, res) => {
     }
 
     if (url.pathname === "/client.js") {
-      await sendScript(res, "./dist/client.js");
+      await sendScript(res, path.resolve(distDir, "client.js"));
+    } else if (url.pathname.startsWith("/chunks/")) {
+      await sendClientChunk(res, url.pathname);
     } else if (url.pathname === "/rsc") {
       const pathname = url.searchParams.get("url") ?? "/";
       await proxyRSC(res, pathname);
@@ -34,7 +38,7 @@ createServer(async (req, res) => {
 }).listen(8080);
 
 async function loadSsrManifest() {
-  const manifestPath = path.resolve(process.cwd(), "dist/ssr-manifest.json");
+  const manifestPath = path.resolve(distDir, "ssr-manifest.json");
 
   const source = await readFile(manifestPath, "utf8");
 
@@ -110,6 +114,34 @@ function createInlineFlightStream(flightStream) {
   }
 
   return Readable.from(generate());
+}
+
+async function sendClientChunk(res, pathname) {
+  const relativePath = pathname.slice(1);
+
+  const filePath = path.resolve(distDir, relativePath);
+
+  if (!filePath.startsWith(`${distDir}${path.sep}`)) {
+    res.statusCode = 404;
+    res.end();
+    return;
+  }
+
+  try {
+    const content = await readFile(filePath);
+
+    res.setHeader("Content-Type", "text/javascript; charset=utf-8");
+
+    res.end(content);
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      res.statusCode = 404;
+      res.end();
+      return;
+    }
+
+    throw error;
+  }
 }
 
 function createFlightScript(text) {

@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "build": "webpack",
+    "build": "node build.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "nodemon -- --import ./register-jsx-loader.js ./server.js",
     "start:rsc": "nodemon --ext js,jsx -- --import ./register-jsx-loader.js --conditions react-server ./rsc-server.js",
