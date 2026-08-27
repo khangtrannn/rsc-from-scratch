@@ -1,6 +1,5 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { ClientManifestPlugin } from "./framework/client-manifest-plugin.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -46,24 +45,20 @@ export function createWebpackConfigs({ clientBoundaries }) {
       ...common,
       name: "browser",
       target: "web",
-      entry: ["./client.js", "./.rsc/client-entry.js"],
+      entry: ["./client.js", "./manual-client-entry.js"],
       output: {
         path: path.resolve(__dirname, "dist"),
         filename: "client.js",
         chunkFilename: "chunks/[name].js",
         publicPath: "/",
       },
-      plugins: [
-        new ClientManifestPlugin({
-          clientBoundaries,
-        }),
-      ],
+      plugins: [],
     },
     {
       ...common,
       name: "ssr",
       target: "node",
-      entry: ["./server.js", "./.rsc/ssr-entry.js"],
+      entry: ["./server.js", "./manual-ssr-entry.js"],
       output: {
         path: path.resolve(__dirname, "dist"),
         filename: "server.cjs",
@@ -71,3 +66,10 @@ export function createWebpackConfigs({ clientBoundaries }) {
     },
   ];
 }
+
+// Standalone Webpack CLI configuration for testing hand-written manifests.
+// The automatic build passes discovered boundaries into the factory above,
+// while the manual flow does not need them.
+export default createWebpackConfigs({
+  clientBoundaries: [],
+});

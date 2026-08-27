@@ -1,12 +1,11 @@
 import { createServer } from "http";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { Readable, PassThrough, Transform } from "node:stream";
-import { createFromNodeStream } from "react-server-dom-webpack/client.node";
+import { PassThrough, Readable, Transform } from "node:stream";
 import { renderToPipeableStream as renderToHTMLStream } from "react-dom/server";
+import { createFromNodeStream } from "react-server-dom-webpack/client.node";
 
 const distDir = path.resolve(process.cwd(), "dist");
-const ssrManifest = await loadSsrManifest();
 
 createServer(async (req, res) => {
   try {
@@ -266,6 +265,16 @@ async function fetchRSCForSSR(pathname) {
   }
 
   const [ssrStream, browserStream] = response.body.tee();
+
+  const ssrManifest = {
+    "./app/components/Counter.jsx": {
+      default: {
+        id: "./app/components/Counter.jsx",
+        chunks: [],
+        name: "default",
+      },
+    },
+  };
 
   const model = createFromNodeStream(Readable.fromWeb(ssrStream), {
     moduleMap: ssrManifest,
